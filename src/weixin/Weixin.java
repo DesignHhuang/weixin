@@ -5,13 +5,15 @@ import java.io.InputStream;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+
+import model.News;
+import weixin.SolrDAOImpl;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.httpclient.Cookie;
@@ -38,9 +40,11 @@ import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import org.apache.solr.client.solrj.SolrServerException;
+
+import util.SolrConstant;
 
 import com.alibaba.fastjson.JSON;
-
 
 public class Weixin {
 	private final static Log log = LogFactory.getLog(Weixin.class);
@@ -73,7 +77,6 @@ public class Weixin {
 	public final static String REFERER_H = "Referer";
 	public final static String USER_AGENT = "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.22 (KHTML, like Gecko) Chrome/25.0.1364.172 Safari/537.22";
 	public final static String UTF_8 = "UTF-8";
-
 	private HttpClient client = new HttpClient();
 	private Cookie[] cookies;
 	private String cookiestr;
@@ -91,6 +94,10 @@ public class Weixin {
 		this.loginPwd = pwd;
 	}
 	
+	public Weixin() {
+		// TODO Auto-generated constructor stub
+	}
+
 	public Cookie[] getCookies() {
 		return cookies;
 	}
@@ -233,28 +240,9 @@ public class Weixin {
 				case -5:
 					this.loginErrMsg = "访问受限";
 					return false;
-				case -6:
-					this.loginErrMsg = "需要输入验证码";
-					return false;
-				case -7:
-					this.loginErrMsg = "此帐号已绑定私人微信号，不可用于公众平台登录";
-					return false;
 				case -8:
 					this.loginErrMsg = "邮箱已存在";
 					return false;
-				case -32:
-					this.loginErrMsg = "验证码输入错误";
-					return false;
-				case -200:
-					this.loginErrMsg = "因频繁提交虚假资料，该帐号被拒绝登录";
-					return false;
-				case -94:
-					this.loginErrMsg = "请使用邮箱登陆";
-					return false;
-				case 10:
-					this.loginErrMsg = "该公众会议号已经过期，无法再登录使用";
-					return false;
-				case 65201:
 				case 65202:
 					this.loginErrMsg = "成功登陆，正在跳转...";
 					return true;
@@ -298,7 +286,6 @@ public class Weixin {
 				if (null != p && p.length == 2
 						&& StringUtils.equalsIgnoreCase(p[0], "token"))
 					return p[1];
-
 			}
 		} catch (Exception e) {
 			String info = "【解析Token失败】【发生异常：" + e.getMessage() + "】";
@@ -499,7 +486,28 @@ public class Weixin {
 		}
 		return false;
 	}
-	public boolean sendMsg(int i)
+	public String getTodayNews() {
+		StringBuffer buffer = new StringBuffer();
+		List<News> newsList = null;
+		try {
+			newsList = SolrDAOImpl.getResultsByTimeRange(SolrConstant.TODAY, 0, 5,
+					"news", News.class);
+		} catch (SolrServerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		buffer.append("今日新闻：").append("\n\n");
+		for (int i = 0; i < newsList.size(); i++) {
+			String newstitle = newsList.get(i).getTitle();
+			String newsurl = newsList.get(i).getUrl();
+			Date newsupdatetime = newsList.get(i).getUpdateTime();
+			String str = "<a href=\"" + newsurl + "\">" + newstitle
+					+ "</a>。更新时间：" + newsupdatetime;
+			buffer.append(i + 1).append(".").append(str).append("\n");
+		}
+		return buffer.toString();
+	}
+	public boolean sendMsg(String fakeid)
 	{
 		try {
 			if (!this.isLogin) {
@@ -522,7 +530,7 @@ public class Weixin {
 				httpClient.getConnectionManager().getSchemeRegistry().register(new Scheme("https", 443, socketFactory)); 
 				HttpPost post = new HttpPost(SENDMSG_URL);
 				post.setHeader(USER_AGENT_H, USER_AGENT);
-				post.setHeader(REFERER_H,"https://mp.weixin.qq.com/cgi-bin/singlesendpage?t=message/send&action=index&tofakeid="+fans.get(i).getId()+"&token="+this.token+"&lang=zh_CN");
+				post.setHeader(REFERER_H,"https://mp.weixin.qq.com/cgi-bin/singlesendpage?t=message/send&action=index&tofakeid="+fakeid+"&token="+this.token+"&lang=zh_CN");
 				post.setHeader("Cookie", this.cookiestr);
 				post.setHeader("Accept", "application/json, text/javascript, */*; q=0.01");
 				post.setHeader("Accept-Encoding", "gzip, deflate");
@@ -534,11 +542,14 @@ public class Weixin {
 				post.setHeader("Pragma", "no-cache");
 				post.setHeader("X-Requested-With", "XMLHttpRequest");
 				List<BasicNameValuePair> formParams = new ArrayList<BasicNameValuePair>(); 
-				formParams.add(new BasicNameValuePair("content", "欢迎加入淮安市科技局推送服务")); 
+				String message = null;
+				Weixin strTodayNews = new Weixin();
+				message = strTodayNews.getTodayNews();
+				formParams.add(new BasicNameValuePair("content", message)); 
 				formParams.add(new BasicNameValuePair("imgcode", "")); 
 				formParams.add(new BasicNameValuePair("lang", "zh_CN")); 
 				formParams.add(new BasicNameValuePair("random", Math.random()+"8")); 
-				formParams.add(new BasicNameValuePair("tofakeid",fans.get(i).getId())); 
+				formParams.add(new BasicNameValuePair("tofakeid",fakeid)); 
 				formParams.add(new BasicNameValuePair("token", this.token)); 
 				formParams.add(new BasicNameValuePair("type", "1")); 
 				formParams.add(new BasicNameValuePair("t", "ajax-response")); 
@@ -563,6 +574,7 @@ public class Weixin {
 		}
 		return false;
 	}
+	
 	public void updateImg(ImgFileForm form) {
 		try {
 			if (!this.isLogin)
@@ -624,6 +636,6 @@ public class Weixin {
 		wx.login();
 		wx.getCookiestr();
 		System.out.println("粉丝数："+wx.getFans());
-		wx.sendMsg(0);
+		wx.sendMsg("1848422160");
 	}
 }
