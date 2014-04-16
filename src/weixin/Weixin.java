@@ -51,32 +51,60 @@ public class Weixin {
 	public final static String HOST = "http://mp.weixin.qq.com";
 	public final static String LOGIN_URL = "http://mp.weixin.qq.com/cgi-bin/login?lang=zh_CN";
 	public final static String INDEX_URL = "http://mp.weixin.qq.com/cgi-bin/indexpage?t=wxm-index&lang=zh_CN";
+	//public final static String INDEX_URL = "https://mp.weixin.qq.com/cgi-bin/home?t=home/index&lang=zh_CN&token=519282636";
 	public final static String SENDMSG_URL ="https://mp.weixin.qq.com/cgi-bin/singlesend";
-	public final static String FANS_URL = "http://mp.weixin.qq.com/cgi-bin/contactmanagepage?t=wxm-friend&lang=zh_CN&pagesize=10&pageidx=0&type=0&groupid=0";
+	//public final static String SENDMSG_URL ="https://mp.weixin.qq.com/cgi-bin/singlesendpage";
+	public final static String FANS_URL = "http://mp.weixin.qq.com/cgi-bin/contactmanagepage?t=wxm-friend&lang=zh_CN&pagesize=10&pageidx=0&type=0";
+	//public final static String FANS_URL = "https://mp.weixin.qq.com/cgi-bin/contactmanage?t=user/index&pagesize=10&pageidx=0&type=0&token=519282636&lang=zh_CN";
+
 	public final static String LOGOUT_URL = "http://mp.weixin.qq.com/cgi-bin/logout?t=wxm-logout&lang=zh_CN";
+	
 	public final static String DOWNLOAD_URL = "http://mp.weixin.qq.com/cgi-bin/downloadfile?";
+	
 	public final static String VERIFY_CODE = "http://mp.weixin.qq.com/cgi-bin/verifycode?";
+	
 	public final static String POST_MSG = "https://mp.weixin.qq.com/cgi-bin/masssend?t=ajax-response";
+	
 	public final static String VIEW_HEAD_IMG = "http://mp.weixin.qq.com/cgi-bin/viewheadimg";
+	
 	public final static String GET_IMG_DATA = "http://mp.weixin.qq.com/cgi-bin/getimgdata";
+	
 	public final static String GET_REGIONS = "http://mp.weixin.qq.com/cgi-bin/getregions";
+	
 	public final static String GET_MESSAGE = "http://mp.weixin.qq.com/cgi-bin/getmessage";
+	
 	public final static String OPER_ADVANCED_FUNC = "http://mp.weixin.qq.com/cgi-bin/operadvancedfunc";
+	
 	public final static String MASSSEND_PAGE = "http://mp.weixin.qq.com/cgi-bin/masssendpage";
+	
 	public final static String FILE_MANAGE_PAGE = "http://mp.weixin.qq.com/cgi-bin/filemanagepage";
+	
 	public final static String OPERATE_APPMSG = "https://mp.weixin.qq.com/cgi-bin/operate_appmsg?token=416919388&lang=zh_CN&sub=edit&t=wxm-appmsgs-edit-new&type=10&subtype=3&ismul=1";
+	
 	public final static String FMS_TRANSPORT = "http://mp.weixin.qq.com/cgi-bin/fmstransport";
+	
 	public final static String CONTACT_MANAGE_PAGE = "http://mp.weixin.qq.com/cgi-bin/contactmanage";
+	
 	public final static String OPER_SELF_MENU = "http://mp.weixin.qq.com/cgi-bin/operselfmenu";
+	
 	public final static String REPLY_RULE_PAGE = "http://mp.weixin.qq.com/cgi-bin/replyrulepage";
+	
 	public final static String SINGLE_MSG_PAGE = "http://mp.weixin.qq.com/cgi-bin/singlemsgpage";
+	
 	public final static String USER_INFO_PAGE = "http://mp.weixin.qq.com/cgi-bin/userinfopage";
+	
 	public final static String DEV_APPLY = "http://mp.weixin.qq.com/cgi-bin/devapply";
+	
 	public final static String UPLOAD_MATERIAL = "https://mp.weixin.qq.com/cgi-bin/uploadmaterial?cgi=uploadmaterial&type=2&token=416919388&t=iframe-uploadfile&lang=zh_CN&formId=1";
+	
 	public final static String USER_AGENT_H = "User-Agent";
+	
 	public final static String REFERER_H = "Referer";
+	
 	public final static String USER_AGENT = "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.22 (KHTML, like Gecko) Chrome/25.0.1364.172 Safari/537.22";
+	
 	public final static String UTF_8 = "UTF-8";
+	
 	private HttpClient client = new HttpClient();
 	private Cookie[] cookies;
 	private String cookiestr;
@@ -209,7 +237,7 @@ public class Weixin {
 			if (status == HttpStatus.SC_OK) {
 				String ret = post.getResponseBodyAsString();
 				LoginJson retcode = JSON.parseObject(ret, LoginJson.class);
-				if (retcode.getRet() == 302 && retcode.getErrCode() == 0) {
+				if (retcode.getErrCode() == 0) {
 					this.cookies = client.getState().getCookies();
 					StringBuffer cookie = new StringBuffer();
 					for (Cookie c : client.getState().getCookies()) {
@@ -218,7 +246,7 @@ public class Weixin {
 					}
 					this.cookiestr = cookie.toString();
 					this.isLogin = true;
-					this.token = getToken(retcode.getErrMsg());
+					this.token = getToken(ret);
 					return true;
 				}
 				int errCode = retcode.getErrCode();
@@ -285,7 +313,7 @@ public class Weixin {
 				String[] p = StringUtils.split(param, "=");
 				if (null != p && p.length == 2
 						&& StringUtils.equalsIgnoreCase(p[0], "token"))
-					return p[1];
+					return p[1].substring(0, p[1].length()-2);
 			}
 		} catch (Exception e) {
 			String info = "【解析Token失败】【发生异常：" + e.getMessage() + "】";
@@ -332,7 +360,7 @@ public class Weixin {
 	public int getFans() {
 		try {
 			String paramStr = "?t=user/index&token=" + this.token
-					+ "&lang=zh_CN&pagesize=10&pageidx=0&type=0&groupid=0";
+					+ "&lang=zh_CN&pagesize=10&pageidx=0&type=0";
 			if (!this.isLogin) {
 				this._login();
 			}
@@ -353,7 +381,7 @@ public class Weixin {
 			log.info(info);
 			return -1;
 		}
-		return -1;
+		return 2;
 	}
 	private int parseFans(String text) {                
 		try {
@@ -378,6 +406,7 @@ public class Weixin {
 			return -1;
 		}
 	}
+	
 	public boolean msgSend(MsgForm form, MsgType type) {
 		try {
 			if (!this.isLogin) {
@@ -569,9 +598,10 @@ public class Weixin {
 				System.out.println("响应内容: " + responseContent); 
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+		e.printStackTrace();
 			return false;
 		}
+	
 		return false;
 	}
 	
@@ -636,6 +666,6 @@ public class Weixin {
 		wx.login();
 		wx.getCookiestr();
 		System.out.println("粉丝数："+wx.getFans());
-		wx.sendMsg("1848422160");
+		wx.sendMsg("2811150003");
 	}
 }
